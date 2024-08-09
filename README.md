@@ -1,2 +1,2 @@
 # Gaussian-Process-Resonance-Search
-Whats up
+# Whats up
