@@ -155,55 +155,86 @@ class GaussianProcessModel:
     def plot(self):
         """Plot a comparison between the histogram and the (presumed already fit) GP"""
     
-        fig, (raw, pull) = plt.subplots(
-            nrows = 2,
-            height_ratios = [2, 1],
+        fig, axes = plt.subplots(
+            nrows = 3,
+            height_ratios = [2, 1, 1],
             sharex = 'col',
             gridspec_kw = dict(
                 hspace = 0.05
-            )
+            ),
+            figsize = (10,12)
         )
-    
+
+        raw, ratio, pull = axes
+
+        # evaluate GP model prediction
+        x = self.histogram.axes[0].centers
+        mean_pred, std_pred = self.model.predict(x.reshape(-1,1), return_std=True)
+
+        # RAW
         # hist has plotting methods already
         #   add label (for legend) and don't show the flow bins
         #   (default is to draw a little arrow hinting that something exists out there)
-        self.histogram.plot(ax=raw, label='Histogram', flow=None)
-        x = self.histogram.axes[0].centers
-        mean_pred, std_pred = self.model.predict(x.reshape(-1,1), return_std=True)
+        self.histogram.plot(ax=raw, label='Observed Data', flow=None)
         art, = raw.plot(
             x, mean_pred,
-            label='\n'.join([
-                f'GP ({repr(self.model.kernel_)})',
-                'with 95% Confidence Interval'
-            ])
+            label= 'GP with 95% Confidence Interval'
         )
         raw.fill_between(
              x, mean_pred - 1.96*std_pred, mean_pred + 1.96*std_pred,
              alpha = 0.5, color = art.get_color()
         )
-        raw.legend()
+        raw.legend(
+            title = f'Kernel: {repr(self.model.kernel_)}',
+            title_fontsize = 'xx-small'
+        )
         raw.set_ylabel('Event Count')
         # mpl default is to add some horizontal padding which I don't like
         raw.set_xlim(np.min(x), np.max(x))
-        raw.set_xlabel(None) # undo labeling to avoid ugliness
-        pull.set_xlabel(self.histogram.axes[0].label)
-        mplhep.label.exp_label('HPS', llabel='Internal', rlabel='2016', ax=raw)
-    
-        sl = (self.histogram.values() > 0)
-        pull_values = (self.histogram.values()-mean_pred)[sl]/np.sqrt(self.histogram.variances()[sl])
-        pull.plot(x[sl], pull_values)
+        mplhep.label.exp_label('HPS', llabel='Internal', rlabel='2016 6.5%', ax=raw)
+
+        combined_variance = self.histogram.variances()+std_pred**2
+        positive_prediction = (mean_pred > 0)&(self.histogram.values() > 0)
+
+        # RATIO
+        ratio_values = (
+            self.histogram.values()[positive_prediction]
+            /mean_pred[positive_prediction]
+        )
+        ratio.plot(x[positive_prediction], ratio_values)
+        ratio_err = ratio_values*np.sqrt(
+            std_pred[positive_prediction]**2
+            /mean_pred[positive_prediction]
+        )
+        ratio.fill_between(
+            x[positive_prediction], ratio_values - ratio_err, ratio_values+ratio_err,
+            alpha = 0.5
+        )
+        ratio.axhline(1, color='gray', ls=':')
+        ratio.set_ylabel(r'Data / GP')
+
+        # PULL
+        pull_values = (
+            (self.histogram.values()-mean_pred)[positive_prediction]
+            /np.sqrt(combined_variance[positive_prediction])
+        )
+        pull.plot(x[positive_prediction], pull_values)
         pull.fill_between(
             x, np.full(x.shape, -2), np.full(x.shape, +2),
             color='gray', alpha=0.5
         )
-        pull.set_ylabel(r'$(\mathrm{H} - \mathrm{GP})/\sigma_\mathrm{H}$')
-    
+        pull.set_ylabel(r'$(\mathrm{Data} - \mathrm{GP})/\sigma$')
+
+        for ax in axes[:-1]:
+            ax.set_xlabel(None) # undo labeling to avoid ugliness
+        axes[-1].set_xlabel(self.histogram.axes[0].label)
+        
         if self.blind_range is not None:
             for e in self.blind_range:
-                for ax in [raw, pull]:
+                for ax in axes:
                     ax.axvline(e, color='tab:red')
 
-        return fig, (raw, pull)
+        return fig, axes
 
 
 @dataclass
