@@ -192,6 +192,10 @@ class GaussianProcessModel:
         sl = (self.histogram.values() > 0)
         pull_values = (self.histogram.values()-mean_pred)[sl]/np.sqrt(self.histogram.variances()[sl])
         pull.plot(x[sl], pull_values)
+        pull.fill_between(
+            x, np.full(x.shape, -2), np.full(x.shape, +2),
+            color='gray', alpha=0.5
+        )
         pull.set_ylabel(r'$(\mathrm{H} - \mathrm{GP})/\sigma_\mathrm{H}$')
     
         if self.blind_range is not None:
@@ -203,25 +207,41 @@ class GaussianProcessModel:
 
 
 @dataclass
-class rebin:
+class rebin_and_limit:
     """rebin an input histogram by the defined factor"""
-    factor: int
+    factor: int = None
+    low_limit: float = None
+    high_limit: float = None
+
 
     def __call__(self, h):
-        return h[hist.rebin(self.factor)]
+        return h[slice(
+            hist.loc(self.low_limit) if self.low_limit is not None else None,
+            hist.loc(self.high_limit) if self.high_limit is not None else None,
+            hist.rebin(self.factor) if self.factor > 1 else None
+        )]
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('name', help='name for model pickle and image')
+    parser.add_argument('--blind', nargs=2, type=float, help='bounds of region to blind')
+    parser.add_argument('--rebin', type=int, help='rebin factor', default=10)
+    parser.add_argument('--low-lim', type=float, default=0.033, help='lower limit of fit')
+    parser.add_argument('--up-lim', type=float, default=0.179, help='upper limit of fit')
+    args = parser.parse_args()
+
     gpm = GaussianProcessModel(
         h = 'real',
-        kernel = 1.0 * kernels.RBF(),
-        blind_range = (0.090, 0.110),
-        modify_histogram = rebin(10)
+        kernel = 1.0 * kernels.RationalQuadratic(),
+        blind_range = args.blind,
+        modify_histogram = rebin_and_limit(args.rebin, args.low_lim, args.up_lim)
     )
-    with open('rebin10.pkl','wb') as f:
+    with open(f'{args.name}.pkl','wb') as f:
         pickle.dump(gpm.model, f)
     fig, axes = gpm.plot()
-    fig.savefig('rebin10.png', bbox_inches='tight')
+    fig.savefig(f'{args.name}.png', bbox_inches='tight')
     fig.clf()
 
 if __name__ == '__main__':
