@@ -13,7 +13,7 @@ mplhep.style.use('ROOT')
 import matplotlib.pyplot as plt
 
 
-def _sim_imd():
+def sim_imd():
     """simulate the IMD by sampling from a moyal distribution
 
     The values of the two moyal distribution parameters were taken
@@ -41,7 +41,7 @@ def _sim_imd():
     )
 
 
-def _load_imd(fp : str|Path, imd_name : str = 'invM_h'):
+def load_imd(fp : str|Path, imd_name : str = 'invM_h'):
     """Load an IMD from the input file and make sure the x axis is labeled appropriately
 
     Parameters
@@ -63,6 +63,25 @@ def _load_imd(fp : str|Path, imd_name : str = 'invM_h'):
 
 
 def _deduce_histogram(h: hist.Hist|str):
+    """Deduce and return the histogram that should be used from the input specification
+
+    Meant to be used within the construction of the GP model class below.
+
+    Parameters
+    ----------
+    h: hist.Hist|str
+        If a hist.Hist is given, use that as the histogram.
+        If h is a str, there are two possible values.
+        'sim' returns the result of sim_imd and 'real' returns the result of 'load_imd'
+        with the filepath 'hps2016invMHisto10pc.root'.
+        Any other str produces a ValueError and any other type produces a TypeError.
+
+    Returns
+    -------
+    hist.Hist
+        histogram following input specification
+    """
+
     if isinstance(h, str):
         if h == 'sim':
             return _sim_imd()
@@ -94,7 +113,8 @@ def fit(
     kernel:
         kernel to use in GP
     blind_range: 2-tuple, optional, default None
-        range of histogram to "blind" the fit to (i.e. do /not/ use this range of values in fit)
+        range of histogram to "blind" the fit to
+        (i.e. do /not/ use this range of values in fit)
     kwargs: dict[str,Any]
         all the rest of the keyword arguments are passed to GaussianProcessRegressor
 
@@ -168,10 +188,10 @@ class GaussianProcessModel:
     blind_range: 2-tuple, optional, default None
         range of histogram to blind model to during fit
     modify_histogram: Callable
-        function to modify histogram after it is loaded
-        could for example rebin or inject a signal bump
+        function to modify histogram after it is loaded but before it is fitted
+        could (for example) rebin, inject a signal bump, or limit the fitting range
     kwargs: dict[str,Any]
-        rest of keyword arguments passed to fit
+        rest of keyword arguments passed to the function fit
     """
 
     def __init__(
