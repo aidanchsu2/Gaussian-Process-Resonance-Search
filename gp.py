@@ -1,5 +1,6 @@
 import pickle
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import uproot
@@ -12,22 +13,62 @@ mplhep.style.use('ROOT')
 import matplotlib.pyplot as plt
 
 
+def _sim_imd():
+    """simulate the IMD by sampling from a moyal distribution
+
+    The values of the two moyal distribution parameters were taken
+    from a fit of a Moyal PDF to the 6.5% 2016 IMD. The returned
+    histogram has the same binning as this IMD and roughly the same
+    number of entries (~5M, some lost to overflow).
+
+    Returns
+    -------
+    hist.Hist
+        simulated IMD
+    """
+    import scipy
+    return (
+        hist.Hist.new
+        .Reg(6000, 0.0, 0.3, label = 'Mass / GeV')
+        .Double()
+        .fill(
+            scipy.stats.moyal.rvs(
+                loc = 0.065,
+                scale = 0.013,
+                size = 5_000_000
+            )
+        )
+    )
+
+
+def _load_imd(fp : str|Path, imd_name : str = 'invM_h'):
+    """Load an IMD from the input file and make sure the x axis is labeled appropriately
+
+    Parameters
+    ----------
+    filepath: str|Path
+        path to ROOT file to load
+    imd_name: str, optional, default invM_h
+        key name of histogram in ROOT file
+
+    Returns
+    -------
+    hist.Hist
+        loaded IMD from the input file
+    """
+    with uproot.open(fp) as f:
+        h = f[imd_name].to_hist()
+        h.axes[0].label = 'Mass / GeV'
+        return h
+
+
 def _deduce_histogram(h: hist.Hist|str):
     if isinstance(h, str):
         if h == 'sim':
-            # simulate a IMD with a moyal distribution
-            # TODO: update to be closer to realistic
-            import scipy
-            return (
-                hist.Hist.new.Reg(250,0,2.5,label='Mass / GeV').Double()
-                .fill(scipy.stats.moyal.rvs(loc=0.5, scale=0.3, size=1_000_000))
-            )
+            return _sim_imd()
         elif h == 'real':
             # load histogram from ROOT file
-            with uproot.open('hps2016invMHisto10pc.root') as f:
-                h = f['invM_h'].to_hist()
-                h.axes[0].label = 'Mass / GeV' # update label to make later plots easier
-                return h
+            return _load_imd('hps2016invMHisto10pc.root')
         else:
             raise ValueError(f'Histogram specification {h} not understood.')
     elif isinstance(h, hist.Hist):
