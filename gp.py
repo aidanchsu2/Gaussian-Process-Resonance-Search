@@ -84,10 +84,10 @@ def _deduce_histogram(h: hist.Hist|str):
 
     if isinstance(h, str):
         if h == 'sim':
-            return _sim_imd()
+            return sim_imd()
         elif h == 'real':
             # load histogram from ROOT file
-            return _load_imd('hps2016invMHisto10pc.root')
+            return load_imd('hps2016invMHisto10pc.root')
         else:
             raise ValueError(f'Histogram specification {h} not understood.')
     elif isinstance(h, hist.Hist):
