@@ -325,7 +325,7 @@ def fit_and_plot(
     plot_filename = None,
     display = True
 ):
-    gpm = GuassianProcessModel(
+    gpm = GaussianProcessModel(
         h = 'real',
         kernel = 1.0 * kernels.RationalQuadratic(),
         blind_range = blind_range,
