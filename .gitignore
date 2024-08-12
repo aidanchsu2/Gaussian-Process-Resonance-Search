@@ -1,0 +1,16 @@
+# generated pickle and plots
+*.pkl
+*.png
+*.pdf
+
+# data file for holding IMD
+*.root
+
+# python and jupyter notebook cache
+.ipynb_checkpoints
+__pycache__
+*.pyc
+.venv
+
+# notebook playground for developing code interactively
+explore.ipynb
