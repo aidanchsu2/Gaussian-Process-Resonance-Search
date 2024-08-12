@@ -225,6 +225,8 @@ class GaussianProcessModel:
         )
         pull.set_ylabel(r'$(\mathrm{Data} - \mathrm{GP})/\sigma$')
 
+        # FINAL CLEANUP
+
         for ax in axes[:-1]:
             ax.set_xlabel(None) # undo labeling to avoid ugliness
         axes[-1].set_xlabel(self.histogram.axes[0].label)
