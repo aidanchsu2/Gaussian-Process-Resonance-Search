@@ -296,7 +296,32 @@ class rebin_and_limit:
         )]
 
 
-def main():
+def fit_and_plot(
+    name,
+    blind_range = None,
+    low_lim = 0.033,
+    up_lim = 0.179,
+    rebin = 10,
+    plot_filename = None,
+    display = True
+):
+    gpm = GuassianProcessModel(
+        h = 'real',
+        kernel = 1.0 * kernels.RationalQuadratic(),
+        blind_range = blind_range,
+        modify_histogram = rebin_and_limit(rebin, low_lim, up_lim)
+    )
+    fig, axes = gpm.plot()
+    if plot_filename is not None:
+        fig.savefig(plot_filename, bbox_inches='tight')
+    if display:
+        plt.show()
+    else:
+        fig.clf()
+    return gpm
+
+
+def _cli_main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('name', help='name for model pickle and image')
@@ -306,17 +331,17 @@ def main():
     parser.add_argument('--up-lim', type=float, default=0.179, help='upper limit of fit')
     args = parser.parse_args()
 
-    gpm = GaussianProcessModel(
-        h = 'real',
-        kernel = 1.0 * kernels.RationalQuadratic(),
+    gpm = fit_and_plot(
+        args.name,
         blind_range = args.blind,
-        modify_histogram = rebin_and_limit(args.rebin, args.low_lim, args.up_lim)
+        rebin = args.rebin,
+        low_lim = args.low_lim,
+        up_lim = args.up_lim,
+        plot_filename = f'{args.name}.png',
+        display = False
     )
     with open(f'{args.name}.pkl','wb') as f:
         pickle.dump(gpm.model, f)
-    fig, axes = gpm.plot()
-    fig.savefig(f'{args.name}.png', bbox_inches='tight')
-    fig.clf()
 
 if __name__ == '__main__':
-    main()
+    _cli_main()
