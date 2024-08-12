@@ -19,12 +19,16 @@ pip install -r requirements.txt
 ```
 
 ## Run
-From the command line
+
+### From the command line
 ```
 python gp.py noblind-eg
 ```
 
-In an notebook (below are a few example cells with the output omitted).
+### In an notebook
+Below are a few example cells with the output omitted for brevity.
+In a real notebook, many of these cells end with statements that
+return something and so those values/figures/reprs will be shown.
 
 ```python
 # have modules be re-loaded when cells are executed
