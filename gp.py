@@ -240,6 +240,36 @@ class rebin_and_limit:
         )]
 
 
+@dataclass
+class inject_signal:
+    """add a signal bump onto the histogram
+
+    Parameters
+    ----------
+    amplitude: float
+        total number of events to have bump represent
+    width: float
+        width of gaussian signal bump (standard deviation)
+    location: float
+        center of gaussian signal bump (mean)
+    """
+    amplitude: float
+    width: float
+    location: float
+    
+
+    def __call__(self, h):
+        """UNTESTED"""
+        import scipy
+        signal_samples = self.amplitude*scipy.stats.norm.pdf(
+            h.axes[0].centers,
+            loc=self.location,
+            scale=self.width
+        )
+        h[:] += signal_samples
+        return h
+
+
 def fit_and_plot(
     name,
     blind_range = None,
