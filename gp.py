@@ -1,6 +1,5 @@
 import pickle
 from dataclasses import dataclass
-from pathlib import Path
 
 import numpy as np
 import uproot
@@ -13,81 +12,22 @@ mplhep.style.use('ROOT')
 import matplotlib.pyplot as plt
 
 
-def sim_imd():
-    """simulate the IMD by sampling from a moyal distribution
-
-    The values of the two moyal distribution parameters were taken
-    from a fit of a Moyal PDF to the 6.5% 2016 IMD. The returned
-    histogram has the same binning as this IMD and roughly the same
-    number of entries (~5M, some lost to overflow).
-
-    Returns
-    -------
-    hist.Hist
-        simulated IMD
-    """
-    import scipy
-    return (
-        hist.Hist.new
-        .Reg(6000, 0.0, 0.3, label = 'Mass / GeV')
-        .Double()
-        .fill(
-            scipy.stats.moyal.rvs(
-                loc = 0.065,
-                scale = 0.013,
-                size = 5_000_000
-            )
-        )
-    )
-
-
-def load_imd(fp : str|Path, imd_name : str = 'invM_h'):
-    """Load an IMD from the input file and make sure the x axis is labeled appropriately
-
-    Parameters
-    ----------
-    filepath: str|Path
-        path to ROOT file to load
-    imd_name: str, optional, default invM_h
-        key name of histogram in ROOT file
-
-    Returns
-    -------
-    hist.Hist
-        loaded IMD from the input file
-    """
-    with uproot.open(fp) as f:
-        h = f[imd_name].to_hist()
-        h.axes[0].label = 'Mass / GeV'
-        return h
-
-
 def _deduce_histogram(h: hist.Hist|str):
-    """Deduce and return the histogram that should be used from the input specification
-
-    Meant to be used within the construction of the GP model class below.
-
-    Parameters
-    ----------
-    h: hist.Hist|str
-        If a hist.Hist is given, use that as the histogram.
-        If h is a str, there are two possible values.
-        'sim' returns the result of sim_imd and 'real' returns the result of 'load_imd'
-        with the filepath 'hps2016invMHisto10pc.root'.
-        Any other str produces a ValueError and any other type produces a TypeError.
-
-    Returns
-    -------
-    hist.Hist
-        histogram following input specification
-    """
-
     if isinstance(h, str):
         if h == 'sim':
-            return sim_imd()
+            # simulate a IMD with a moyal distribution
+            # TODO: update to be closer to realistic
+            import scipy
+            return (
+                hist.Hist.new.Reg(250,0,2.5,label='Mass / GeV').Double()
+                .fill(scipy.stats.moyal.rvs(loc=0.5, scale=0.3, size=1_000_000))
+            )
         elif h == 'real':
             # load histogram from ROOT file
-            return load_imd('hps2016invMHisto10pc.root')
+            with uproot.open('hps2016invMHisto10pc.root') as f:
+                h = f['invM_h'].to_hist()
+                h.axes[0].label = 'Mass / GeV' # update label to make later plots easier
+                return h
         else:
             raise ValueError(f'Histogram specification {h} not understood.')
     elif isinstance(h, hist.Hist):
@@ -113,8 +53,7 @@ def fit(
     kernel:
         kernel to use in GP
     blind_range: 2-tuple, optional, default None
-        range of histogram to "blind" the fit to
-        (i.e. do /not/ use this range of values in fit)
+        range of histogram to "blind" the fit to (i.e. do /not/ use this range of values in fit)
     kwargs: dict[str,Any]
         all the rest of the keyword arguments are passed to GaussianProcessRegressor
 
@@ -188,10 +127,10 @@ class GaussianProcessModel:
     blind_range: 2-tuple, optional, default None
         range of histogram to blind model to during fit
     modify_histogram: Callable
-        function to modify histogram after it is loaded but before it is fitted
-        could (for example) rebin, inject a signal bump, or limit the fitting range
+        function to modify histogram after it is loaded
+        could for example rebin or inject a signal bump
     kwargs: dict[str,Any]
-        rest of keyword arguments passed to the function fit
+        rest of keyword arguments passed to fit
     """
 
     def __init__(
@@ -216,89 +155,74 @@ class GaussianProcessModel:
     def plot(self):
         """Plot a comparison between the histogram and the (presumed already fit) GP"""
     
-        fig, axes = plt.subplots(
-            nrows = 3,
-            height_ratios = [2, 1, 1],
+        fig, (raw, pull) = plt.subplots(
+            nrows = 2,
+            height_ratios = [2,1],
             sharex = 'col',
             gridspec_kw = dict(
                 hspace = 0.05
-            ),
-            figsize = (10,12)
+            )
         )
-
-        raw, ratio, pull = axes
-
-        # evaluate GP model prediction
-        x = self.histogram.axes[0].centers
-        mean_pred, std_pred = self.model.predict(x.reshape(-1,1), return_std=True)
-
-        # RAW
+    
         # hist has plotting methods already
         #   add label (for legend) and don't show the flow bins
         #   (default is to draw a little arrow hinting that something exists out there)
-        self.histogram.plot(ax=raw, label='Observed Data', flow=None)
+        self.histogram.plot(ax=raw, label='Histogram', flow=None)
+        x = self.histogram.axes[0].centers
+        mean_pred, std_pred = self.model.predict(x.reshape(-1,1), return_std=True)
         art, = raw.plot(
             x, mean_pred,
-            label= 'GP with 95% Confidence Interval'
+            #label='\n'.join([
+             #   f'GP ({repr(self.model.kernel_)})',
+              #  'with 95% Confidence Interval'
+            #])
+            
+            label='GP'
         )
         raw.fill_between(
              x, mean_pred - 1.96*std_pred, mean_pred + 1.96*std_pred,
              alpha = 0.5, color = art.get_color()
         )
-        raw.legend(
-            title = f'Kernel: {repr(self.model.kernel_)}',
-            title_fontsize = 'xx-small'
-        )
+        raw.legend()
         raw.set_ylabel('Event Count')
         # mpl default is to add some horizontal padding which I don't like
         raw.set_xlim(np.min(x), np.max(x))
-        mplhep.label.exp_label('HPS', llabel='Internal', rlabel='2016 6.5%', ax=raw)
-
-        combined_variance = self.histogram.variances()+std_pred**2
-        positive_prediction = (mean_pred > 0)&(self.histogram.values() > 0)
-
-        # RATIO
-        ratio_values = (
-            self.histogram.values()[positive_prediction]
-            /mean_pred[positive_prediction]
-        )
-        ratio.plot(x[positive_prediction], ratio_values)
-        ratio_err = ratio_values*np.sqrt(
-            std_pred[positive_prediction]**2
-            /mean_pred[positive_prediction]
-        )
-        ratio.fill_between(
-            x[positive_prediction], ratio_values - ratio_err, ratio_values+ratio_err,
-            alpha = 0.5
-        )
-        ratio.axhline(1, color='gray', ls=':')
-        ratio.set_ylabel(r'Data / GP')
-
-        # PULL
-        pull_values = (
-            (self.histogram.values()-mean_pred)[positive_prediction]
-            /np.sqrt(combined_variance[positive_prediction])
-        )
-        pull.plot(x[positive_prediction], pull_values)
+        raw.set_xlabel(None) # undo labeling to avoid ugliness
+        pull.set_xlabel(self.histogram.axes[0].label)
+        mplhep.label.exp_label('HPS', llabel='Internal', rlabel='2016', ax=raw)
+    
+        sl = (self.histogram.values() > 0)
+        pull_values = (self.histogram.values()-mean_pred)[sl]/np.sqrt(self.histogram.variances()[sl])
+        pull.plot(x[sl], pull_values)
         pull.fill_between(
             x, np.full(x.shape, -2), np.full(x.shape, +2),
             color='gray', alpha=0.5
         )
-        pull.set_ylabel(r'$(\mathrm{Data} - \mathrm{GP})/\sigma$')
+        pull.set_ylabel(r'$(\mathrm{H} - \mathrm{GP})/\sigma_\mathrm{H}$')
 
-        # FINAL CLEANUP
-
-        for ax in axes[:-1]:
-            ax.set_xlabel(None) # undo labeling to avoid ugliness
-        axes[-1].set_xlabel(self.histogram.axes[0].label)
-        
         if self.blind_range is not None:
             for e in self.blind_range:
-                for ax in axes:
+                for ax in [raw, pull]:
                     ax.axvline(e, color='tab:red')
 
-        return fig, axes
+        return fig, (raw, pull)
+        
+        
+    def plot_pull_histogram(self):
+        x = self.histogram.axes[0].centers
+        mean_pred, std_pred = self.model.predict(x.reshape(-1,1), return_std=True)
+        sl = (self.histogram.values() > 0)
 
+        pull_values = (self.histogram.values()-mean_pred)[sl]/np.sqrt(self.histogram.variances()[sl])
+        pp = plt.hist(pull_values,40,(-10,10),label=r'Pull $(H - GP)/\sigma$')
+        plt.xlabel(r'Pull $(H - GP)/\sigma$')
+        plt.ylabel('Frequency (# of bins)')
+        
+        return pp
+
+    def plot_raw(self):
+        self.histogram.plot(label='Histogram', flow=None)
+        plt.ylabel('Event Count')
 
 @dataclass
 class rebin_and_limit:
@@ -316,32 +240,7 @@ class rebin_and_limit:
         )]
 
 
-def fit_and_plot(
-    name,
-    blind_range = None,
-    low_lim = 0.033,
-    up_lim = 0.179,
-    rebin = 10,
-    plot_filename = None,
-    display = True
-):
-    gpm = GaussianProcessModel(
-        h = 'real',
-        kernel = 1.0 * kernels.RationalQuadratic(),
-        blind_range = blind_range,
-        modify_histogram = rebin_and_limit(rebin, low_lim, up_lim)
-    )
-    fig, axes = gpm.plot()
-    if plot_filename is not None:
-        fig.savefig(plot_filename, bbox_inches='tight')
-    if display:
-        plt.show()
-    else:
-        fig.clf()
-    return gpm
-
-
-def _cli_main():
+def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('name', help='name for model pickle and image')
@@ -351,17 +250,17 @@ def _cli_main():
     parser.add_argument('--up-lim', type=float, default=0.179, help='upper limit of fit')
     args = parser.parse_args()
 
-    gpm = fit_and_plot(
-        args.name,
+    gpm = GaussianProcessModel(
+        h = 'real',
+        kernel = 1.0 * kernels.RationalQuadratic(),
         blind_range = args.blind,
-        rebin = args.rebin,
-        low_lim = args.low_lim,
-        up_lim = args.up_lim,
-        plot_filename = f'{args.name}.png',
-        display = False
+        modify_histogram = rebin_and_limit(args.rebin, args.low_lim, args.up_lim)
     )
     with open(f'{args.name}.pkl','wb') as f:
         pickle.dump(gpm.model, f)
+    fig, axes = gpm.plot()
+    fig.savefig(f'{args.name}.png', bbox_inches='tight')
+    fig.clf()
 
 if __name__ == '__main__':
-    _cli_main()
+    main()
