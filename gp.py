@@ -141,8 +141,15 @@ class GaussianProcessModel:
         modify_histogram = None,
         **kwargs
     ):
-        _h = _deduce_histogram(h)
-        self.histogram = _h if modify_histogram is None else modify_histogram(_h)
+        self.histogram = _deduce_histogram(h)
+        if modify_histogram is not None:
+            if isinstance(modify_histogram, (list,tuple)):
+                for func in modify_histogram:
+                    self.histogram = func(self.histogram)
+            elif callable(modify_histogram):
+                self.histogram = modify_histogram(self.histogram)
+            else:
+                raise TypeError('modify_histogram is not a Callable or list/tuple of Callables.')
         self.blind_range = blind_range # store for plotting purposes
         self.model = fit(
             self.histogram,
