@@ -375,7 +375,7 @@ class inject_signal:
             loc=self.location,
             scale=self.width
         )
-        h[:] += signal_samples
+        h[:] = h.values() + signal_samples
         return h
 
 
@@ -392,7 +392,10 @@ def fit_and_plot(
         h = 'real',
         kernel = 1.0 * kernels.RBF() * kernels.DotProduct(),
         blind_range = blind_range,
-        modify_histogram = rebin_and_limit(rebin, low_lim, up_lim)
+        modify_histogram = [
+            rebin_and_limit(rebin, low_lim, up_lim),
+            inject_signal(1000.0, 0.100, 0.008)
+        ]
     )
     fig, axes = gpm.plot()
     if plot_filename is not None:
