@@ -6,7 +6,7 @@ import numpy as np
 import uproot
 import hist
 from sklearn.gaussian_process import GaussianProcessRegressor, kernels
-
+from scipy.stats import chisquare
 import mplhep
 mplhep.style.use('ROOT')
 
@@ -219,7 +219,6 @@ class GaussianProcessModel:
             **kwargs
         )
 
-
     def plot(self):
         """Plot a comparison between the histogram and the (presumed already fit) GP"""
     
@@ -238,12 +237,15 @@ class GaussianProcessModel:
         # evaluate GP model prediction
         x = self.histogram.axes[0].centers
         mean_pred, std_pred = self.model.predict(x.reshape(-1,1), return_std=True)
+        
+        # CHI2
+        chi2_statistic, p_value = chisquare(self.histogram.values(), np.sum(self.histogram.values())/np.sum(mean_pred) * mean_pred)
 
         # RAW
         # hist has plotting methods already
         #   add label (for legend) and don't show the flow bins
         #   (default is to draw a little arrow hinting that something exists out there)
-        self.histogram.plot(ax=raw, label='Observed Data', flow=None)
+        self.histogram.plot(ax=raw, label='Observed Data\nChi2 = %.2f \nChi2 Probability = %.2f' % (chi2_statistic, p_value), flow=None)
         art, = raw.plot(
             x, mean_pred,
             label= 'GP with 95% Confidence Interval'
@@ -253,7 +255,8 @@ class GaussianProcessModel:
              alpha = 0.5, color = art.get_color()
         )
         raw.legend(
-            title = f'Kernel: {repr(self.model.kernel_)}',
+            #title = f'Kernel: {repr(self.model.kernel_)}',
+            title = 'Kernel: RBF * DotProduct',
             title_fontsize = 'xx-small'
         )
         raw.set_ylabel('Event Count')
@@ -293,6 +296,10 @@ class GaussianProcessModel:
         )
         pull.set_ylabel(r'$(\mathrm{Data} - \mathrm{GP})/\sigma$')
 
+        # CHI2
+        chi2_results = chisquare(self.histogram.values(), np.sum(self.histogram.values())/np.sum(mean_pred) * mean_pred)
+        print(chi2_results)
+        
         # FINAL CLEANUP
 
         for ax in axes[:-1]:
@@ -306,9 +313,11 @@ class GaussianProcessModel:
 
         return fig, axes
 
+        
+
 
     def plot_pull_histogram(self):
-        x = sef.histogram.axes[0].centers
+        x = self.histogram.axes[0].centers
         mean_pred, std_pred = self.model.predict(x.reshape(-1,1), return_std=True)
         combined_variance = self.histogram.variances()+std_pred**2
         positive_prediction = (mean_pred > 0)&(self.histogram.values() > 0)
