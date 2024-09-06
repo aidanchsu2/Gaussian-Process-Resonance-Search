@@ -13,4 +13,5 @@ __pycache__
 .venv
 
 # notebook playground for developing code interactively
-explore.ipynb
+# don't commit notebooks because they are hard to track
+**.ipynb
