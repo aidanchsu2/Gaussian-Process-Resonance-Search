@@ -1,0 +1,31 @@
+- re-organize code to be split across multiple files into a manageable form
+- signal injector-inator optionally write to file
+- mass resolution functions and auto-calculation of blind range
+- search scan through mass points
+
+CLI Tasks
+- Single fit and plot
+  - with blind range: show statistical calculation of likilhood excess is significant
+- Inject signal (known and blinded), write output histogram to file and answer to separate file
+  - known mass
+  - rand mass (answer unknown to creator)
+- Search: scan mass points, blinding and estimating p-value excess at each point
+  - (optional) plot each mass point search as in single fit and plot
+  - (optional) save each fit to pickle
+  - p-value of excess at mass point plot
+  - 95% CL maximum in window (for exclusion calculation)
+
+Modules
+
+gp
+  - class GaussianProcessModel
+    - main API with construction, evaluation, and plotting
+  - mod _fit : fitting implementations
+  - mod _plot : plotting helpers
+  - mod _hist : modify histograms in a known way
+    - class rebin_and_limit : rebin and restrict the fit range
+    - class signal_inject : add bump on top of the signal
+    - def read : read in a histogram from a file
+    - def write : write out histogram to a file
+  - mod _mass_resolution : mass resolution definition
+  - mod _search : looping
