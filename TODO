@@ -1,6 +1,7 @@
-- re-organize code to be split across multiple files into a manageable form
-- signal injector-inator optionally write to file
-- mass resolution functions and auto-calculation of blind range
+-[x] re-organize code to be split across multiple files into a manageable form
+-[x] signal injector-inator optionally write to file
+-[x] mass resolution functions
+- auto-cacluation of blind range
 - search scan through mass points
 
 CLI Tasks
