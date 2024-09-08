@@ -8,7 +8,7 @@ import hist
 from scipy.stats import chisquare
 
 from ._fit import fit, kernels
-from ._hist import sim_imd, load, _deduce_histogram, rebin_and_limit, inject_signal
+from ._hist import io, manipulation
 from ._plot import plt, label
 
 
@@ -39,7 +39,7 @@ class GaussianProcessModel:
         modify_histogram = None,
         **kwargs
     ):
-        self.histogram = _deduce_histogram(h)
+        self.histogram = io._deduce_histogram(h)
         if modify_histogram is not None:
             if isinstance(modify_histogram, (list,tuple)):
                 for func in modify_histogram:
