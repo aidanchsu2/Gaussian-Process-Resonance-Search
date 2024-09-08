@@ -10,6 +10,7 @@ from scipy.stats import chisquare
 from ._fit import fit, kernels
 from ._hist import io, manipulation
 from ._plot import plt, label
+from ._mass_resolution import mass_resolution_2016_bump_hunt as mass_resolution
 
 
 class GaussianProcessModel:

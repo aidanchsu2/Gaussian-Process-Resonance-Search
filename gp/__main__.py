@@ -1,55 +1,86 @@
 import pickle
-from . import GaussianProcessModel, rebin_and_limit, kernels
+from pathlib import Path
+from typing_extensions import Annotated
+from typing import Tuple
 
+import typer
+
+
+from . import GaussianProcessModel
+from . import kernels
+from . import manipulation
+from . import io
+from . import mass_resolution
+
+
+app = typer.Typer()
+
+InputHistDefault = ('hps2016invMHisto10pc.root', 'invM_h')
+InputHist = typer.Option(help = 'Input histogram file with the key to the histogram in that file.')
+
+
+@app.command()
 def fit_and_plot(
-    name,
-    blind_range = None,
-    low_lim = 0.033,
-    up_lim = 0.179,
-    rebin = 10,
-    plot_filename = None,
-    display = True
+    name: Annotated[str, typer.Argument(help='name for this run, used as name for output files')],
+    blind_range: Annotated[Tuple[float,float], typer.Option(help='edges of range to blind in GeV')] = None,
+    low_lim : Annotated[float, typer.Option(help='lower limit of fit range in GeV')] = 0.033,
+    up_lim : Annotated[float, typer.Option(help='upper limit of fit range in GeV')] = 0.179,
+    rebin : Annotated[int,typer.Option(help='rebin factor to apply before fitting')] = 10,
+    input : Annotated[Tuple[str,str], InputHist] = InputHistDefault,
+    out_dir : Annotated[Path, typer.Option(help='output directory to write files to')] = Path.cwd()
 ):
+    """Fit a GP model and plot the result a single time"""
     gpm = GaussianProcessModel(
-        h = 'real',
+        h = io.load(*input),
         kernel = 1.0 * kernels.RBF() * kernels.DotProduct(),
         blind_range = blind_range,
         modify_histogram = [
-            rebin_and_limit(rebin, low_lim, up_lim),
+            manipulation.rebin_and_limit(rebin, low_lim, up_lim),
         ]
     )
     fig, axes = gpm.plot_comparison()
-    if plot_filename is not None:
-        fig.savefig(plot_filename, bbox_inches='tight')
-    if display:
-        plt.show()
-    else:
-        fig.clf()
-    return gpm
+    filestem = out_dir / name
+    fig.savefig(filestem.with_suffix('.png'), bbox_inches='tight')
+    with open(filestem.with_suffix('.pkl'), 'wb') as f:
+        pickle.dump(gpm, f)
 
 
-def _cli_main():
-    import argparse
-    parser = argparse.ArgumentParser('python3 -m gp')
-    parser.add_argument('name', help='name for model pickle and image')
-    parser.add_argument('--blind', nargs=2, type=float, help='bounds of region to blind')
-    parser.add_argument('--rebin', type=int, help='rebin factor', default=10)
-    parser.add_argument('--low-lim', type=float, default=0.033, help='lower limit of fit')
-    parser.add_argument('--up-lim', type=float, default=0.179, help='upper limit of fit')
-    args = parser.parse_args()
+@app.command()
+def inject_signal(
+    output: Annotated[Path, typer.Argument(help='output file to write histogram to')],
+    name: Annotated[str, typer.Argument(help='name of histogram in output file')],
+    mass: Annotated[float, typer.Argument(help='inject signal of this mass in GeV')],
+    nevents : Annotated[int, typer.Argument(help='number of events to inject')],
+    mass_width: Annotated[float, typer.Argument(help='width of signal peak', show_default='determined by mass resolution')] = None,
+    input : Annotated[Tuple[str,str], InputHist] = InputHistDefault
+):
+    """Inject signal into the IMD and then write the updated histogram out"""
+    h = io.load(*input)
+    mass_width = mass_resolution(mass) if mass_width is None else mass_width
+    h = manipulation.inject_signal(
+        location = mass,
+        width = mass_width,
+        amplitude = nevents
+    )(h)
+    io.write(output, name, h)
 
-    gpm = fit_and_plot(
-        args.name,
-        blind_range = args.blind,
-        rebin = args.rebin,
-        low_lim = args.low_lim,
-        up_lim = args.up_lim,
-        plot_filename = f'{args.name}.png',
-        display = False
-    )
-    with open(f'{args.name}.pkl','wb') as f:
-        pickle.dump(gpm.model, f)
+
+@app.command()
+def search(
+    output: Path,
+    input : Annotated[Tuple[str,str], InputHist] = InputHistDefault
+):
+    """Search through mass points, performing a fit at each one"""
+    for mass in tqdm(mass_range):
+        gpm = GaussianProcessModel(
+            h = input,
+            kernel = 1.0*kernels.RBF()*kernels.DotProduct(),
+            blind_range = (mass - 1.96*sigma_m, mass + 1.96*sigma_m),
+            modify_histogram = [
+                manipulation.rebin_and_limit(10, 0.033, 0.174)
+            ]
+        )
 
 
 if __name__ == '__main__':
-    _cli_main()
+    app()

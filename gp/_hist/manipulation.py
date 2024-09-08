@@ -1,6 +1,12 @@
 """Different functions useful for manipulating histograms in memory"""
+from dataclasses import dataclass
 
+import numpy as np
 import hist
+
+
+rng = np.random.default_rng(seed = 1)
+"""rng state for our work, mainly used in signal injection"""
 
 
 @dataclass
@@ -25,7 +31,7 @@ class inject_signal:
 
     Parameters
     ----------
-    amplitude: float
+    nevnets: int
         total number of events to have bump represent
     width: float
         width of gaussian signal bump (standard deviation)
@@ -38,12 +44,6 @@ class inject_signal:
     
 
     def __call__(self, h):
-        """UNTESTED"""
-        import scipy
-        signal_samples = self.amplitude*scipy.stats.norm.pdf(
-            h.axes[0].centers,
-            loc=self.location,
-            scale=self.width
-        )
-        h[:] = h.values() + signal_samples
+        """Add new entries to the histogram sampling from a normal distribution"""
+        h.fill(rng.normal(loc=self.location, scale=self.width, size=self.amplitude))
         return h

@@ -1,6 +1,6 @@
 import pickle
 from pathlib import Path
-from dataclasses import dataclass
+from typing import Tuple
 
 import scipy
 import uproot
@@ -79,7 +79,7 @@ def write(fp : str|Path, name: str, h: hist.Hist):
         raise ValueError(r"Extension '{fp.suffix}' not recognized as pickle ('.pkl') or ROOT ('.root')")
 
 
-def _deduce_histogram(h: hist.Hist|str):
+def _deduce_histogram(h: hist.Hist|str|Tuple[str,str]):
     """Deduce and return the histogram that should be used from the input specification
 
     Meant to be used within the construction of the GP model class below.
@@ -107,6 +107,8 @@ def _deduce_histogram(h: hist.Hist|str):
             return load('hps2016invMHisto10pc.root')
         else:
             return load(h)
+    elif isinstance(h, tuple):
+        return load(h[0], h[1])
     elif isinstance(h, hist.Hist):
         return h
     else:
