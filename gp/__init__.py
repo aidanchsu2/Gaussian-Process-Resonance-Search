@@ -96,8 +96,8 @@ class GaussianProcessModel:
             /self.mean_pred[self.positive_prediction]
         )
         err = vals*np.sqrt(
-            self.std_pred[self.positive_prediction]**2
-            /self.mean_pred[self.positive_prediction]
+            self.std_pred[self.positive_prediction]**2/self.mean_pred[self.positive_prediction]**2
+            +self.histogram.variances()[self.positive_prediction]/self.histogram.values()[self.positive_prediction]**2
         )
         return vals, err
 
