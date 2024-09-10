@@ -275,10 +275,12 @@ class GaussianProcessModel:
         ratio.plot(x[positive_prediction], ratio_values)
         ratio_err = ratio_values*np.sqrt(
             std_pred[positive_prediction]**2
-            /mean_pred[positive_prediction]
+            /mean_pred[positive_prediction]**2
+            +self.histogram.variances()[positive_prediction]
+            /self.histogram.values()[positive_prediction]**2
         )
         ratio.fill_between(
-            x[positive_prediction], ratio_values - ratio_err, ratio_values+ratio_err,
+            x[positive_prediction], ratio_values - 1.96*ratio_err, ratio_values + 1.96*ratio_err,
             alpha = 0.5
         )
         ratio.axhline(1, color='gray', ls=':')
