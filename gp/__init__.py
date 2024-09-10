@@ -185,7 +185,7 @@ class GaussianProcessModel:
         # RATIO
         ratio_vals, ratio_err = self.ratio
         ratio.plot(x, ratio_vals)
-        ratio.fill_between(x, ratio_vals - ratio_err, ratio_vals+ratio_err, alpha=0.5)
+        ratio.fill_between(x, ratio_vals - 1.96*ratio_err, ratio_vals + 1.96*ratio_err, alpha=0.5)
         ratio.axhline(1, color='gray', ls=':')
         ratio.set_ylabel(r'Data / Fit')
 
