@@ -38,7 +38,7 @@ class inject_signal:
     location: float
         center of gaussian signal bump (mean)
     """
-    amplitude: float
+    amplitude: int
     width: float
     location: float
     
