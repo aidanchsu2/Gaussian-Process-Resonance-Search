@@ -198,7 +198,7 @@ class GaussianProcessModel:
         self,
         h: hist.Hist|str,
         kernel, *,
-        blind_range = None,
+        blind_range = None, #= input_mass-sigma, imput_mass+sigma
         modify_histogram = None,
         **kwargs
     ):
@@ -245,7 +245,7 @@ class GaussianProcessModel:
         # hist has plotting methods already
         #   add label (for legend) and don't show the flow bins
         #   (default is to draw a little arrow hinting that something exists out there)
-        self.histogram.plot(ax=raw, label='Observed Data\nChi2 = %.2f \nChi2 Probability = %.2f' % (chi2_statistic, p_value), flow=None)
+        self.histogram.plot(ax=raw, label='Observed Data\nChi2 = %.3f \nChi2 Probability = %.3f' % (chi2_statistic, p_value), flow=None)
         art, = raw.plot(
             x, mean_pred,
             label= 'GP with 95% Confidence Interval'
@@ -315,8 +315,32 @@ class GaussianProcessModel:
 
         return fig, axes
 
+    def get_chisquare(self):
+        x = self.histogram.axes[0].centers
+        mean_pred, std_pred = self.model.predict(x.reshape(-1,1), return_std=True)
+        chi2_statistic, p_value = chisquare(self.histogram.values(), np.sum(self.histogram.values())/np.sum(mean_pred) * mean_pred)
+        return chi2_statistic
         
+    def get_chisquare_p_value(self):
+        x = self.histogram.axes[0].centers
+        mean_pred, std_pred = self.model.predict(x.reshape(-1,1), return_std=True)
+        chi2_statistic, p_value = chisquare(self.histogram.values(), np.sum(self.histogram.values())/np.sum(mean_pred) * mean_pred)
+        return p_value
 
+    def get_pull_values(self):
+        
+        x = self.histogram.axes[0].centers
+        mean_pred, std_pred = self.model.predict(x.reshape(-1,1), return_std=True)
+        
+        combined_variance = self.histogram.variances()+std_pred**2
+        positive_prediction = (mean_pred > 0)&(self.histogram.values() > 0)
+        
+        pull_values = (
+            (self.histogram.values()-mean_pred)[positive_prediction]
+            /np.sqrt(combined_variance[positive_prediction])
+        )
+        return pull_values[positive_prediction]
+        
 
     def plot_pull_histogram(self):
         x = self.histogram.axes[0].centers
