@@ -23,6 +23,7 @@ InputHist = typer.Option(help = 'Input histogram file with the key to the histog
 def fit_and_plot(
     name: Annotated[str, typer.Argument(help='name for this run, used as name for output files')],
     blind_range: Annotated[Tuple[float,float], typer.Option(help='edges of range to blind in GeV')] = None,
+    search_mass: Annotated[float, typer.Option(help='search for this mass in GeV')] = None,
     low_lim : Annotated[float, typer.Option(help='lower limit of fit range in GeV')] = 0.033,
     up_lim : Annotated[float, typer.Option(help='upper limit of fit range in GeV')] = 0.179,
     rebin : Annotated[int,typer.Option(help='rebin factor to apply before fitting')] = 10,
@@ -30,10 +31,22 @@ def fit_and_plot(
     out_dir : Annotated[Path, typer.Option(help='output directory to write files to')] = Path.cwd()
 ):
     """Fit a GP model and plot the result a single time"""
+    if blind_range is not None and search_mass is not None:
+        print('You can only specify one of --blind-range or --search-mass.')
+        typer.Exit(code=1)
+
+    br = None
+    if blind_range is not None:
+        br = blind_range
+    elif search_mass is not None:
+        br = [
+            search_mass - mass_resolution(search_mass),
+            search_mass + mass_resolution(search_mass)
+        ]
     gpm = GaussianProcessModel(
         h = io.load(*input),
         kernel = 1.0 * kernels.RBF() * kernels.DotProduct(),
-        blind_range = blind_range,
+        blind_range = br,
         modify_histogram = [
             manipulation.rebin_and_limit(rebin, low_lim, up_lim),
         ]
