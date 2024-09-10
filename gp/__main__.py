@@ -103,7 +103,7 @@ def search(
         typer.Argument(
             help='mass range in GeV, '
             'specified like Python range (stop, start stop, start stop step) '
-            'except the default for start is 0.020 and the default step is 0.010'
+            'except the default for start is 0.020 and the default step is 0.005'
             )
     ],
     blind_halfwidth: Annotated[
@@ -124,7 +124,7 @@ def search(
     """Search through mass points, performing a fit at each one"""
     start = 0.020
     stop  = None
-    step  = 0.010
+    step  = 0.005
     if len(mass_range) > 3:
         raise ValueError('More than 3 parameters given as mass_range.')
     elif len(mass_range) < 1:
@@ -136,6 +136,7 @@ def search(
         stop  = mass_range[1]
         if len(mass_range) == 3:
             step = mass_range[2]
+    output.mkdir(exist_ok=True, parents=True)
     mass_range = np.arange(start, stop, step)
     with open(output / 'search-results.csv', 'w', newline='') as f:
         o = csv.writer(f)
@@ -143,10 +144,10 @@ def search(
         for mass, sigma_m in tqdm(zip(mass_range, mass_resolution(mass_range)), total=len(mass_range)):
             gpm = GaussianProcessModel(
                 h = input,
-                kernel = 1.0*kernels.RBF()*kernels.DotProduct(),
+                kernel = kernels.RBF()*kernels.DotProduct(),
                 blind_range = (mass - blind_halfwidth*sigma_m, mass + blind_halfwidth*sigma_m),
                 modify_histogram = [
-                    manipulation.rebin_and_limit(10, 0.033, 0.174)
+                    manipulation.rebin_and_limit(10, 0.033, 0.179)
                 ]
             )
             if plot_each:
@@ -159,8 +160,11 @@ def search(
             o.writerow([
                 mass,
                 sigma_m,
-                gpm.model.kernel_.k1.k1.constant_value,
-                gpm.model.kernel_.k1.k2.length_scale,
+#                gpm.model.kernel_.k1.k1.constant_value,
+#                gpm.model.kernel_.k1.k2.length_scale,
+#                gpm.model.kernel_.k2.sigma_0,
+                np.nan,
+                gpm.model.kernel_.k1.length_scale,
                 gpm.model.kernel_.k2.sigma_0,
                 np.sum(gpm.pull**2)
             ])
