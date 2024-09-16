@@ -7,6 +7,7 @@ def fit(
     histogram: hist.Hist,
     kernel,
     blind_range = None,
+    empty_bin_variance = None,
     **kwargs
 ) -> GaussianProcessRegressor:
     """fit the input histogram with a GP using the input kernel
@@ -22,6 +23,11 @@ def fit(
     blind_range: 2-tuple, optional, default None
         range of histogram to "blind" the fit to
         (i.e. do /not/ use this range of values in fit)
+    empty_bin_variance: float|None
+        specify how we should handle empty bins in the original histogram.
+        If None, drop the empty bins and only fit to non-empty bins.
+        If float, fit to empty bins using 0 for their value and the passed
+        number to be their variance.
     kwargs: dict[str,Any]
         all the rest of the keyword arguments are passed to GaussianProcessRegressor
 
@@ -55,8 +61,15 @@ def fit(
 
     x     = histogram.axes[0].centers
     value = histogram.values()
+    variance = histogram.variances()
 
-    fit_selection = (value > 0.0) # make sure something is in the bins
+    fit_selection = np.full(value.shape, True)
+    if empty_bin_variance is None:
+        fit_selection = (value > 0.0)
+    else:
+        # set the variance on empty bins to be the 95% upper limit of a Poisson mean
+        # when observing 0
+        variance[value < 1.0] = 3.6889 
     if blind_range is not None:
         if isinstance(blind_range, (tuple,list)) and len(blind_range)==2:
             fit_selection = fit_selection&((x < blind_range[0])|(x > blind_range[1]))
@@ -65,7 +78,7 @@ def fit(
 
     x_train = x[fit_selection]
     y_train = value[fit_selection]
-    variance = histogram.variances()[fit_selection]
+    variance = variance[fit_selection]
 
     if 'alpha' in kwargs:
         raise KeyError('alpha cannot be manually set. It is determined to be the variance of the histogram to fit')

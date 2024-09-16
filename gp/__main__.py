@@ -44,6 +44,13 @@ def fit_and_plot(
         Tuple[float,float],
         typer.Option( help='search for this mass in GeV with the window size in standard deviations (exclusive with blind-range)')
     ] = None,
+    empty_bin_variance: Annotated[
+        float,
+        typer.Option(
+            help='use empty bins as values of 0 and include them with this variance'
+            ' (otherwise, just drop empty bins)'
+        )
+    ] = None,
     low_lim : Annotated[float, typer.Option(help='lower limit of fit range in GeV')] = 0.033,
     up_lim : Annotated[float, typer.Option(help='upper limit of fit range in GeV')] = 0.179,
     rebin : Annotated[int,typer.Option(help='rebin factor to apply before fitting')] = 10,
@@ -67,7 +74,8 @@ def fit_and_plot(
         blind_range = br,
         modify_histogram = [
             manipulation.rebin_and_limit(rebin, low_lim, up_lim),
-        ]
+        ],
+        empty_bin_variance = empty_bin_variance
     )
     fig, axes = gpm.plot_comparison()
     filestem = out_dir / name
