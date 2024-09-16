@@ -27,7 +27,7 @@ InputHist = Annotated[
     typer.Option(help = 'Input histogram file with the key to the histogram in that file.')
 ]
 
-the_kernel = kernels.RBF() * kernels.DotProduct()
+the_kernel = kernels.RBF(length_scale = 0.016) * kernels.DotProduct(sigma_0 = 2.5e4)
 the_kernel_label = r'$K(m_i, m_j) = (\sigma_0^2 + m_i m_j \delta_{ij})e^{-(m_i-m_j)^2/\ell^2}$'
 
 
@@ -124,7 +124,7 @@ def search(
         typer.Option(
             help='mass range in GeV, '
             'specified like Python range (stop, start stop, start stop step) '
-            'except the default for start is 0.033 and the default step is 0.005',
+            'except the default for start is 0.040 and the default step is 0.005',
             )
     ] = [0.160],
     blind_halfwidth: Annotated[
@@ -175,7 +175,7 @@ def search(
                 out_name = output / f'{int(1000*mass)}mev_search'
                 fig, axes = gpm.plot_comparison()
                 fig.savefig(out_name.with_suffix('.png'), bbox_inches='tight')
-                fig.close()
+                plt.close()
                 with open(out_name.with_suffix('.pkl'), 'wb') as f:
                     pickle.dump(gpm, f)
     
@@ -223,8 +223,8 @@ def search(
 
     axes[-1].set_xlabel('mass / GeV')
     label(ax = axes[0])
-    fig.savefig(output / 'search-good-fit-overview.png')
-    fig.close()
+    fig.savefig(output / 'search-good-fit-overview.png', bbox_inches='tight')
+    plt.close() 
 
 if __name__ == '__main__':
     app()
