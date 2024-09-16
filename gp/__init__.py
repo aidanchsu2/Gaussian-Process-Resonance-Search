@@ -175,7 +175,7 @@ class GaussianProcessModel:
         self.plot_histogram(ax=raw)
         self.plot_prediction(ax=raw)
         raw.legend(
-            title = 'Kernel: RBF * DotProduct',
+            title = f'Kernel: {repr(self.model.kernel_)}',
             title_fontsize = 'xx-small'
         )
         # mpl default is to add some horizontal padding which I don't like
