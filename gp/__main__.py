@@ -176,8 +176,9 @@ def search(
                 kernel = the_kernel,
                 blind_range = (mass - blind_halfwidth*sigma_m, mass + blind_halfwidth*sigma_m),
                 modify_histogram = [
-                    manipulation.rebin_and_limit(10, 0.033, 0.179)
-                ]
+                    manipulation.rebin_and_limit(10)
+                ],
+                empty_bin_variance = 3.688
             )
             if plot_each:
                 out_name = output / f'{int(1000*mass)}mev_search'
