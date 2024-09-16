@@ -188,6 +188,7 @@ class GaussianProcessModel:
         ratio.fill_between(x, ratio_vals - 1.96*ratio_err, ratio_vals + 1.96*ratio_err, alpha=0.5)
         ratio.axhline(1, color='gray', ls=':')
         ratio.set_ylabel(r'Data / Fit')
+        ratio.set_ylim(0, 2)
 
         # PULL
         pull.plot(x, self.pull)
@@ -196,6 +197,7 @@ class GaussianProcessModel:
             color='gray', alpha=0.5
         )
         pull.set_ylabel(r'$(\mathrm{Data} - \mathrm{Fit})/\sigma$')
+        pull.set_ylim(-5.5,5.5)
 
         # FINAL CLEANUP
 
