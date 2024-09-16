@@ -1,8 +1,8 @@
 -[x] re-organize code to be split across multiple files into a manageable form
 -[x] signal injector-inator optionally write to file
 -[x] mass resolution functions
-- auto-cacluation of blind range
-- search scan through mass points
+-[x] auto-cacluation of blind range
+-[x] search scan through mass points
 
 CLI Tasks
 - Single fit and plot
