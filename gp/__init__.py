@@ -179,7 +179,7 @@ class GaussianProcessModel:
             title_fontsize = 'xx-small'
         )
         # mpl default is to add some horizontal padding which I don't like
-        raw.set_xlim(np.min(x), np.max(x))
+        raw.set_xlim(self.histogram.axes[0].edges[[0,-1]])
         label(ax=raw)
 
         # RATIO
