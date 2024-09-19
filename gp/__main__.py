@@ -9,6 +9,7 @@ from rich import print
 import numpy as np
 from tqdm import tqdm
 import pandas as pd
+import uproot
 
 
 from . import GaussianProcessModel
@@ -83,8 +84,12 @@ def fit_and_plot(
         pickle.dump(gpm, f)
 
 
-@app.command()
-def inject_signal(
+inject_signal = typer.Typer(
+    help='inject signal into the IMD and write the resulting histogram to a file'
+)
+
+@inject_signal.command('single')
+def inject_signal_single(
     output: Annotated[Path, typer.Argument(help='output file to write histogram to')],
     name: Annotated[str, typer.Argument(help='name of histogram in output file')],
     mass: Annotated[
@@ -107,7 +112,7 @@ def inject_signal(
     ] = None,
     input : InputHist = InputHistDefault
 ):
-    """Inject signal into the IMD and then write the updated histogram out"""
+    """Inject a known signal into the IMD"""
     h = _hist.io.load(*input)
     mass_width = mass_resolution(mass) if mass_width is None else mass_width
     h = _hist.manipulation.inject_signal(
@@ -117,6 +122,43 @@ def inject_signal(
     )(h)
     _hist.io.write(output, name, h)
 
+
+@inject_signal.command('rand')
+def inject_signal_rand(
+    output: Annotated[Path, typer.Argument(help='output file to write histogram to, the `.root` suffix is used for the histograms and a `_answers.csv` lists the ID with the injected signal')],
+    number: Annotated[int, typer.Option(help='number of signal bumps to inject, written as separate IMDs into the output file')] = 1,
+    seed: Annotated[int, typer.Option(help='seed for random number generation')] = 1,
+    nevents: Annotated[int, typer.Option(help='number of events to inject per mass')] = 10000,
+    input : InputHist = InputHistDefault
+):
+    """Inject a random signal (or signals) into the IMD"""
+    mass_selector = np.random.default_rng(seed = seed)
+    h = _hist.io.load(*input)
+    with (
+        open(output.with_suffix('.csv'), 'w', newline='') as answers,
+        uproot.recreate(output.with_suffix('.root')) as hist_f
+    ):
+        ans_f = csv.writer(answers)
+        ans_f.writerow(['HID','Mass','Width','Ninjected'])
+        for n in range(number):
+            # cantor pairing for unique ID 
+            #   ID is uniquely derived from seed and the number it was sampled from
+            #   WARNING: if ID=42 is mass 0.080, then it will be mass 0.080 again
+            hid = (n+seed)*(n+seed+1) // 2 + n
+            mass = mass_selector.uniform(0.040,0.160)
+            mass_width = mass_resolution(mass)
+            # need to make a copy to avoid injecting two masses into the same histogram
+            inj_h = h.copy()
+            inj_h = _hist.manipulation.inject_signal(
+                location = mass,
+                width = mass_width,
+                amplitude = nevents
+            )(inj_h)
+            hist_f[str(hid)] = inj_h
+            ans_f.writerow([hid, mass, mass_width, nevents])
+
+
+app.add_typer(inject_signal, name="inject-signal")
 
 @app.command()
 def search(
