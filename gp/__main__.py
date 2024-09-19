@@ -13,8 +13,7 @@ import pandas as pd
 
 from . import GaussianProcessModel
 from . import kernels
-from . import manipulation
-from . import io
+from . import _hist
 from . import mass_resolution
 from ._plot import plt, label
 
@@ -69,11 +68,11 @@ def fit_and_plot(
         width *= mass_resolution(center)
         br = [ center - width, center + width ]
     gpm = GaussianProcessModel(
-        h = io.load(*input),
+        h = _hist.io.load(*input),
         kernel = the_kernel,
         blind_range = br,
         modify_histogram = [
-            manipulation.rebin_and_limit(rebin, low_lim, up_lim),
+            _hist.manipulation.rebin_and_limit(rebin, low_lim, up_lim),
         ],
         empty_bin_variance = empty_bin_variance
     )
@@ -109,14 +108,14 @@ def inject_signal(
     input : InputHist = InputHistDefault
 ):
     """Inject signal into the IMD and then write the updated histogram out"""
-    h = io.load(*input)
+    h = _hist.io.load(*input)
     mass_width = mass_resolution(mass) if mass_width is None else mass_width
-    h = manipulation.inject_signal(
+    h = _hist.manipulation.inject_signal(
         location = mass,
         width = mass_width,
         amplitude = nevents
     )(h)
-    io.write(output, name, h)
+    _hist.io.write(output, name, h)
 
 
 @app.command()
@@ -176,7 +175,7 @@ def search(
                 kernel = the_kernel,
                 blind_range = (mass - blind_halfwidth*sigma_m, mass + blind_halfwidth*sigma_m),
                 modify_histogram = [
-                    manipulation.rebin_and_limit(10)
+                    _hist.manipulation.rebin_and_limit(10)
                 ],
                 empty_bin_variance = 3.688
             )

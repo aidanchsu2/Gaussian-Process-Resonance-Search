@@ -22,7 +22,7 @@ pip install -r requirements.txt
 
 ### From the command line
 ```
-python gp.py noblind-eg
+python -m gp --help
 ```
 
 ### In an notebook

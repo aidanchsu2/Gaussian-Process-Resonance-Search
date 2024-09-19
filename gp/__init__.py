@@ -8,7 +8,7 @@ import hist
 from scipy.stats import chisquare
 
 from ._fit import fit, kernels
-from ._hist import io, manipulation
+from . import _hist
 from ._plot import plt, label
 from ._mass_resolution import mass_resolution_2016_bump_hunt as mass_resolution
 
@@ -40,7 +40,7 @@ class GaussianProcessModel:
         modify_histogram = None,
         **kwargs
     ):
-        self.histogram = io._deduce_histogram(h)
+        self.histogram = _hist.io._deduce_histogram(h)
         if modify_histogram is not None:
             if isinstance(modify_histogram, (list,tuple)):
                 for func in modify_histogram:
@@ -144,7 +144,7 @@ class GaussianProcessModel:
         kwargs.setdefault('yerr', False)
         art = (
             hist.Hist.new
-            .Reg(41,-10,10,label=r'Pull $(\mathrm{Data}-\mathrm{GP})/\sigma$')
+            .Reg(41,-10,10,label=r'Pull $(\mathrm{Data}-\mathrm{Fit})/\sigma$')
             .Double()
             .fill(pull_values)
         ).plot(**kwargs)
