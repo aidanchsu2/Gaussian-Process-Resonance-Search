@@ -3,7 +3,8 @@
 Using Gaussian Processes to model the Invariant Mass Distribution (IMD) within HPS.
 
 Originally developed this with Python 3.10.12 and the requirements listed
-in [requirements.txt](requirements.txt).
+in [requirements.txt](requirements.txt). More detail about implementation
+focused on a new-developer audience is in [NOTES.md](NOTES.md).
 
 ## Set Up
 ```
@@ -24,6 +25,9 @@ pip install -r requirements.txt
 ```
 python -m gp --help
 ```
+There are many sub-commands each with their own options.
+The `typer` package is used to provide a pretty-printed and detailed
+help message that you are encouraged to explore.
 
 ### In an notebook
 Below are a few example cells with the output omitted for brevity.
