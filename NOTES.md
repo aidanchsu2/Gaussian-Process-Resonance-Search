@@ -14,7 +14,8 @@ The parent module `gp` holds several sub-modules that are
 organized in a (hopefully) logical way.
 
 `gp`
-  - `class GaussianProcessModel` : main API with construction, evaluation, and plotting
+  - `__init__.py`: module loaded when `gp` is loaded
+    - `class GaussianProcessModel` : main API with construction, evaluation, and plotting
   - `__main__` : run when gp module is executed as a program
   - `_fit.py` : fitting implementations, currently only a single implementation via scikit-learn
   - `_plot.py` : plotting utilities
@@ -35,4 +36,5 @@ Whenever Python3 enters a new directory while loading modules, it looks for
 a `__init__.py` file to load before continuing. This offers a helpful point
 for us to rename things in a helpful manner or define shared behavior.
 `gp/__init__.py` is a basic example of this where we rename some submodules
-that may be helpful and we define the shared API class.
+that may be helpful (e.g. `import ._fit as fit` so that `gp.fit` works)
+and we define the shared API class.
