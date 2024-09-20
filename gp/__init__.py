@@ -80,6 +80,11 @@ class GaussianProcessModel:
         """
         return self.model.predict(mass.reshape(-1,1), return_std=True)
 
+
+    @property
+    def kernel(self):
+        """Get the _fit_ kernel and not the kernel passed as a parameter"""
+        return self.model.kernel_
     
     @property
     def combined_variance(self):
@@ -146,7 +151,7 @@ class GaussianProcessModel:
             hist.Hist.new
             .Reg(41,-10,10,label=r'Pull $(\mathrm{Data}-\mathrm{Fit})/\sigma$')
             .Double()
-            .fill(pull_values)
+            .fill(self.pull)
         ).plot(**kwargs)
         kwargs.get('ax', plt.gca()).set_ylabel('Bin Count')
         return art
