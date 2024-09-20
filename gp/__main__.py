@@ -210,7 +210,7 @@ def search(
     mass_range = np.arange(start, stop, step)
     with open(output / 'search-results.csv', 'w', newline='') as f:
         o = csv.writer(f)
-        o.writerow(['mass','sigma_m','constant','length_scale','sigma_0','chi2'])
+        o.writerow(['mass','sigma_m','chi2','test_statistic_in_blind_region','pvalue_in_blind_region','constant','length_scale','sigma_0'])
         for mass, sigma_m in tqdm(zip(mass_range, mass_resolution(mass_range)), total=len(mass_range)):
             gpm = GaussianProcessModel(
                 h = input,
@@ -229,16 +229,19 @@ def search(
                 with open(out_name.with_suffix('.pkl'), 'wb') as f:
                     pickle.dump(gpm, f)
     
+            test_statistic, p_value = gpm.search_in_blind_region()
             o.writerow([
                 mass,
                 sigma_m,
+                np.sum(gpm.pull**2),
+                test_statistic,
+                p_value,
 #                gpm.model.kernel_.k1.k1.constant_value,
 #                gpm.model.kernel_.k1.k2.length_scale,
 #                gpm.model.kernel_.k2.sigma_0,
                 np.nan,
                 gpm.model.kernel_.k1.length_scale,
                 gpm.model.kernel_.k2.sigma_0,
-                np.sum(gpm.pull**2)
             ])
 
     s = pd.read_csv(output / 'search-results.csv')
