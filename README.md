@@ -34,6 +34,13 @@ Below are a few example cells with the output omitted for brevity.
 In a real notebook, many of these cells end with statements that
 return something and so those values/figures/reprs will be shown.
 
+> [!WARNING]
+> While notebooks are very helpful for trying out new things and
+> editing plots, they are difficult to track and keep reproducible.
+> For this reason, you should only use notebooks as a "playground"
+> and move anything that is working into the python code of the module
+> itself to be usable by others.
+
 ```python
 # have modules be re-loaded when cells are executed
 # this is helpful for us since then we can edit gp.py
