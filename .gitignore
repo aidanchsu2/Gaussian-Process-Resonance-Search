@@ -12,6 +12,7 @@ __pycache__
 *.pyc
 .venv
 
-# notebook playground for developing code interactively
 # don't commit notebooks because they are hard to track
-**.ipynb
+*.ipynb
+# except notebooks specifically in notebooks directory
+!notebooks/*.ipynb
