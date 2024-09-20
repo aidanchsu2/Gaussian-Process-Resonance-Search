@@ -87,7 +87,26 @@ class GaussianProcessModel:
 
 
     def search_in_blind_region(self):
-        """calculate the test statistic and the resulting p-value looking into the blind region"""
+        """calculate the test statistic and the resulting p-value looking into the blind region
+
+        This is a very simplified statistical treatment where we basically treat the entire
+        blind region as a single bin. Inside that single bin, we have a prediction (and its
+        uncertainty) from our background model and the observed data yield. The pull value
+        (Data - Pred)/Err is then used as a test statistic where the null distribution is
+        approximated by a simple, standard normal.
+
+        Assumptions
+        -----------
+        - The yield is high enough so a normal approximation is appropriate. We satisfy
+          this assumption since the yield within our bins is at minimum several thousand.
+
+        We get this test statistic (the single-bin pull value) by simply summing over the pull values
+        that fall within the blinded region.
+        The p-value of this test statistic is then calculated using the normal
+        distributions survival function (scipy.stats.norm.sf) which is equivalent to integrating
+        from the input value up to positive infinity (i.e. the probability that the observed test
+        statistic or anything more extreme is observed).
+        """
         test_statistic = np.sum(self.pull[slice(*self.blind_range_indices)])
         p_value = scipy.stats.norm.sf(test_statistic)
         return test_statistic, p_value
