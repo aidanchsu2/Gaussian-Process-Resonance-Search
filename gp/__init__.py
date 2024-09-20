@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import uproot
 import hist
-from scipy.stats import chisquare
+import scipy
 
 from ._fit import fit, kernels
 from . import _hist
@@ -57,7 +57,7 @@ class GaussianProcessModel:
             **kwargs
         )
         self.mean_pred, self.std_pred = self.predict(self.histogram.axes[0].centers)
-        self.chi2_statistic, self.p_value = chisquare(
+        self.chi2_statistic, self.p_value = scipy.stats.chisquare(
             self.histogram.values(),
             np.sum(self.histogram.values())/np.sum(self.mean_pred) * self.mean_pred
         )
@@ -79,6 +79,18 @@ class GaussianProcessModel:
             at the input masses
         """
         return self.model.predict(mass.reshape(-1,1), return_std=True)
+
+
+    @property
+    def blind_range_indices(self):
+        return self.histogram.axes[0].index(self.blind_range)
+
+
+    def search_in_blind_region(self):
+        """calculate the test statistic and the resulting p-value looking into the blind region"""
+        test_statistic = np.sum(self.pull[slice(*self.blind_range_indices)])
+        p_value = scipy.stats.norm.sf(test_statistic)
+        return test_statistic, p_value
 
 
     @property
