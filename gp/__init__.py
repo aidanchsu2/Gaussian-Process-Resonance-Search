@@ -111,6 +111,32 @@ class GaussianProcessModel:
         p_value = scipy.stats.norm.sf(test_statistic)
         return test_statistic, p_value
 
+    
+    def upper_limit_in_blind_region(
+        self,
+        num_toys = 10000
+    ):
+        """estimate the upper limit within the blinded region in a single-bin (no templating)
+        model
+
+        We construct a background prediction and uncertainty by integrating over the blinded
+        region. Then, we do toy counting experiments sampling the Poisson lambda from a normal
+        distribution whose mean and and deviation are the background's prediction and uncertainty.
+        The upper limit is then set to the 95% quantile of these toy counting experiments subtracted
+        by the mean background prediction.
+        """
+        exp_val = np.sum(self.mean_pred[slice(*self.blind_range_indices)])
+        exp_err = np.sqrt(np.sum(self.std_pred[slice(*self.blind_range_indices)]**2))
+        rng = np.random.default_rng(seed = 1) 
+        toy_experiments = rng.poisson(
+            lam = rng.normal(
+                loc = exp_val,
+                scale = exp_err,
+                size = num_toys
+            )
+        )
+        return np.quantile(toy_experiments, [0.95])[0] - exp_val
+
 
     @property
     def kernel(self):
