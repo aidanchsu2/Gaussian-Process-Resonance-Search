@@ -75,8 +75,8 @@ class single_bin_toys:
         self.rng = np.random.default_rng(seed = self.seed)
 
     def __call__(self, expected_bkgd, bkgd_uncertainty, obs_n_events):
-        toy_experiments = rng.poisson(
-            lam = rng.normal(
+        toy_experiments = self.rng.poisson(
+            lam = self.rng.normal(
                 loc = expected_bkgd,
                 scale = bkgd_uncertainty,
                 size = self.num_toys
