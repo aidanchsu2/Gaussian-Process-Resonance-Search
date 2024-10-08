@@ -210,7 +210,11 @@ def search(
     mass_range = np.arange(start, stop, step)
     with open(output / 'search-results.csv', 'w', newline='') as f:
         o = csv.writer(f)
-        o.writerow(['mass','sigma_m','chi2','test_statistic_in_blind_region','pvalue_in_blind_region','uplim_in_blind_region','constant','length_scale','sigma_0'])
+        o.writerow([
+            'mass','sigma_m','chi2',
+            'prediction', 'uncertainty', 'observation',
+            'length_scale','sigma_0'
+        ])
         for mass, sigma_m in tqdm(zip(mass_range, mass_resolution(mass_range)), total=len(mass_range)):
             gpm = GaussianProcessModel(
                 h = input,
@@ -229,19 +233,19 @@ def search(
                 with open(out_name.with_suffix('.pkl'), 'wb') as f:
                     pickle.dump(gpm, f)
     
-            test_statistic, p_value = gpm.search_in_blind_region()
-            up_lim = gpm.upper_limit_in_blind_region()
+            prediction, uncertainty = gpm.blind_single_bin_prediction
+            observation = gpm.blind_single_bin_observation
             o.writerow([
                 mass,
                 sigma_m,
                 np.sum(gpm.pull**2),
-                test_statistic,
-                p_value,
-                up_lim,
-#                gpm.model.kernel_.k1.k1.constant_value,
-#                gpm.model.kernel_.k1.k2.length_scale,
-#                gpm.model.kernel_.k2.sigma_0,
-                np.nan,
+                prediction,
+                uncertainty,
+                observation,
+                # getting kernel values when a constant is included
+                # gpm.model.kernel_.k1.k1.constant_value,
+                # gpm.model.kernel_.k1.k2.length_scale,
+                # gpm.model.kernel_.k2.sigma_0,
                 gpm.model.kernel_.k1.length_scale,
                 gpm.model.kernel_.k2.sigma_0,
             ])
