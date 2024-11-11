@@ -27,7 +27,12 @@ InputHist = Annotated[
     typer.Option(help = 'Input histogram file with the key to the histogram in that file.')
 ]
 
-the_kernel = kernels.RBF(length_scale = 0.016) * kernels.DotProduct(sigma_0 = 2.5e4)
+the_kernel = (
+    kernels.WhiteKernel(noise_level=7e3) +
+    #kernels.RationalQuadratic()*kernels.ConstantKernel()
+    #kernels.RationalQuadratic()*kernels.DotProduct()
+    kernels.RBF(length_scale = 0.016)*kernels.DotProduct(sigma_0 = 2.5e4)
+)
 the_kernel_label = r'$K(m_i, m_j) = (\sigma_0^2 + m_i m_j \delta_{ij})e^{-(m_i-m_j)^2/\ell^2}$'
 
 
@@ -213,7 +218,12 @@ def search(
         o.writerow([
             'mass','sigma_m','chi2',
             'prediction', 'uncertainty', 'observation',
-            'length_scale','sigma_0'
+            # RBF*dotprod
+            #'length_scale', 'sigma_0'
+            # constant*RBF*dotprod
+            #'constant_value', 'length_scale', 'sigma_0'
+            # whitenoise + RBF * dotproduct
+            'noise_level', 'length_scale','sigma_0'
         ])
         for mass, sigma_m in tqdm(zip(mass_range, mass_resolution(mass_range)), total=len(mass_range)):
             gpm = GaussianProcessModel(
@@ -243,11 +253,16 @@ def search(
                 uncertainty,
                 observation,
                 # getting kernel values when a constant is included
-                # gpm.model.kernel_.k1.k1.constant_value,
-                # gpm.model.kernel_.k1.k2.length_scale,
-                # gpm.model.kernel_.k2.sigma_0,
-                gpm.model.kernel_.k1.length_scale,
-                gpm.model.kernel_.k2.sigma_0,
+                #gpm.kernel.k1.k1.constant_value,
+                #gpm.kernel.k1.k2.length_scale,
+                #gpm.kernel.k2.sigma_0,
+                # just DotProduct times RBF
+                #gpm.kernel.k1.length_scale,
+                #gpm.kernel.k2.sigma_0,
+                # WhiteKernel + DotProduct * RBF
+                gpm.kernel.k1.noise_level,
+                gpm.kernel.k2.k1.length_scale,
+                gpm.kernel.k2.k2.sigma_0
             ])
 
     s = pd.read_csv(output / 'search-results.csv')
