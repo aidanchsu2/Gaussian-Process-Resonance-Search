@@ -195,7 +195,7 @@ class GaussianProcessModel:
             'label',
             '\n'.join([
                 'GP with 95% Confidence Interval',
-                f'$\chi^2 = ${self.chi2_statistic:.3g}',
+                rf'$\chi^2 = ${self.chi2_statistic:.3g}',
                 r'$P_{\chi^2} = $'+f'{self.p_value:.3g}'
             ])
         )
