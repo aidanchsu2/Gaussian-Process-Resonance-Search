@@ -21,7 +21,7 @@ from ._plot import plt, label
 
 app = typer.Typer()
 
-InputHistDefault = (Path('hps2016invMHisto10pc.root'), 'invM_h')
+InputHistDefault = (Path('EventSelection_Data_10Percent.root'), 'h_Minv_General_Final_1')
 InputHist = Annotated[
     Tuple[Path,str],
     typer.Option(help = 'Input histogram file with the key to the histogram in that file.')
