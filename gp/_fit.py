@@ -87,7 +87,7 @@ def fit(
     kwargs.setdefault('n_restarts_optimizer', 9)
     _gp = GaussianProcessRegressor(
         kernel = kernel,
-        alpha = variance,
+    #    alpha = variance,
         **kwargs
     )
     # fit expects a _column_ for x and a _row_ for y so we need to reshape x

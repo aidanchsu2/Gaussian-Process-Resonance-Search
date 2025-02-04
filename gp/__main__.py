@@ -21,13 +21,18 @@ from ._plot import plt, label
 
 app = typer.Typer()
 
-InputHistDefault = (Path('hps2016invMHisto10pc.root'), 'invM_h')
+InputHistDefault = (Path('EventSelection_Data_10Percent.root'), 'h_Minv_General_Final_1')
 InputHist = Annotated[
     Tuple[Path,str],
     typer.Option(help = 'Input histogram file with the key to the histogram in that file.')
 ]
 
-the_kernel = kernels.RBF(length_scale = 0.016) * kernels.DotProduct(sigma_0 = 2.5e4)
+the_kernel = (
+    kernels.WhiteKernel(noise_level=7e3) +
+    #kernels.RationalQuadratic()*kernels.ConstantKernel()
+    #kernels.RationalQuadratic()*kernels.DotProduct()
+    kernels.RBF(length_scale = 0.016)*kernels.DotProduct(sigma_0 = 2.5e4)
+)
 the_kernel_label = r'$K(m_i, m_j) = (\sigma_0^2 + m_i m_j \delta_{ij})e^{-(m_i-m_j)^2/\ell^2}$'
 
 
@@ -210,7 +215,16 @@ def search(
     mass_range = np.arange(start, stop, step)
     with open(output / 'search-results.csv', 'w', newline='') as f:
         o = csv.writer(f)
-        o.writerow(['mass','sigma_m','chi2','test_statistic_in_blind_region','pvalue_in_blind_region','uplim_in_blind_region','constant','length_scale','sigma_0'])
+        o.writerow([
+            'mass','sigma_m','chi2',
+            'prediction', 'uncertainty', 'observation',
+            # RBF*dotprod
+            #'length_scale', 'sigma_0'
+            # constant*RBF*dotprod
+            #'constant_value', 'length_scale', 'sigma_0'
+            # whitenoise + RBF * dotproduct
+            'noise_level', 'length_scale','sigma_0'
+        ])
         for mass, sigma_m in tqdm(zip(mass_range, mass_resolution(mass_range)), total=len(mass_range)):
             gpm = GaussianProcessModel(
                 h = input,
@@ -229,21 +243,26 @@ def search(
                 with open(out_name.with_suffix('.pkl'), 'wb') as f:
                     pickle.dump(gpm, f)
     
-            test_statistic, p_value = gpm.search_in_blind_region()
-            up_lim = gpm.upper_limit_in_blind_region()
+            prediction, uncertainty = gpm.blind_single_bin_prediction
+            observation = gpm.blind_single_bin_observation
             o.writerow([
                 mass,
                 sigma_m,
                 np.sum(gpm.pull**2),
-                test_statistic,
-                p_value,
-                up_lim,
-#                gpm.model.kernel_.k1.k1.constant_value,
-#                gpm.model.kernel_.k1.k2.length_scale,
-#                gpm.model.kernel_.k2.sigma_0,
-                np.nan,
-                gpm.model.kernel_.k1.length_scale,
-                gpm.model.kernel_.k2.sigma_0,
+                prediction,
+                uncertainty,
+                observation,
+                # getting kernel values when a constant is included
+                #gpm.kernel.k1.k1.constant_value,
+                #gpm.kernel.k1.k2.length_scale,
+                #gpm.kernel.k2.sigma_0,
+                # just DotProduct times RBF
+                #gpm.kernel.k1.length_scale,
+                #gpm.kernel.k2.sigma_0,
+                # WhiteKernel + DotProduct * RBF
+                gpm.kernel.k1.noise_level,
+                gpm.kernel.k2.k1.length_scale,
+                gpm.kernel.k2.k2.sigma_0
             ])
 
     s = pd.read_csv(output / 'search-results.csv')

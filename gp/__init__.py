@@ -11,6 +11,7 @@ from ._fit import fit, kernels
 from . import _hist
 from ._plot import plt, label
 from ._mass_resolution import mass_resolution_2016_bump_hunt as mass_resolution
+from . import _limit_setting as limit_setting
 
 
 class GaussianProcessModel:
@@ -86,6 +87,22 @@ class GaussianProcessModel:
         return self.histogram.axes[0].index(self.blind_range)
 
 
+    @property
+    def blind_single_bin_prediction(self):
+        if self.blind_range is None:
+            raise ValueError('Cannot predict into a blind region when no bliding was done!')
+        pred_val = np.sum(self.mean_pred[slice(*self.blind_range_indices)])
+        pred_unc = np.sqrt(np.sum(self.std_pred[slice(*self.blind_range_indices)]**2))
+        return pred_val, pred_unc
+    
+
+    @property
+    def blind_single_bin_observation(self):
+        if self.blind_range is None:
+            raise ValueError('Cannot observe what is in the blind region when no blinding was done!')
+        return np.sum(self.histogram.values()[slice(*self.blind_range_indices)])
+
+
     def search_in_blind_region(self):
         """calculate the test statistic and the resulting p-value looking into the blind region
 
@@ -114,28 +131,19 @@ class GaussianProcessModel:
     
     def upper_limit_in_blind_region(
         self,
-        num_toys = 10000
+        calculator = limit_setting.single_bin_cls()
     ):
-        """estimate the upper limit within the blinded region in a single-bin (no templating)
-        model
+        """estimate the upper limit within the blinded region in a single-bin
+        (no templating) model
 
-        We construct a background prediction and uncertainty by integrating over the blinded
-        region. Then, we do toy counting experiments sampling the Poisson lambda from a normal
-        distribution whose mean and and deviation are the background's prediction and uncertainty.
-        The upper limit is then set to the 95% quantile of these toy counting experiments subtracted
-        by the mean background prediction.
+        Various statistical calculations are possible and some options
+        exist in the limit_setting submodule. The default is a technique
+        equivalent to CLs.
         """
         exp_val = np.sum(self.mean_pred[slice(*self.blind_range_indices)])
         exp_err = np.sqrt(np.sum(self.std_pred[slice(*self.blind_range_indices)]**2))
-        rng = np.random.default_rng(seed = 1) 
-        toy_experiments = rng.poisson(
-            lam = rng.normal(
-                loc = exp_val,
-                scale = exp_err,
-                size = num_toys
-            )
-        )
-        return np.quantile(toy_experiments, [0.95])[0] - exp_val
+        obs = np.sum(self.histogram.values()[slice(*self.blind_range_indices)])
+        return calculator(exp_val, exp_err, obs)
 
 
     @property
@@ -187,7 +195,7 @@ class GaussianProcessModel:
             'label',
             '\n'.join([
                 'GP with 95% Confidence Interval',
-                f'$\chi^2 = ${self.chi2_statistic:.3g}',
+                rf'$\chi^2 = ${self.chi2_statistic:.3g}',
                 r'$P_{\chi^2} = $'+f'{self.p_value:.3g}'
             ])
         )
@@ -250,7 +258,7 @@ class GaussianProcessModel:
         ratio.fill_between(x, ratio_vals - 1.96*ratio_err, ratio_vals + 1.96*ratio_err, alpha=0.5)
         ratio.axhline(1, color='gray', ls=':')
         ratio.set_ylabel(r'Data / Fit')
-        ratio.set_ylim(0, 2)
+        #ratio.set_ylim(0, 2)
 
         # PULL
         pull.plot(x, self.pull)
